@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Coordinates, DirectionCountries } from './types';
 import PermissionScreen from './components/PermissionScreen';
 import LoadingIndicator from './components/LoadingIndicator';
@@ -15,9 +15,27 @@ const App: React.FC = () => {
     west: 'Pacific',
   });
   const [error, setError] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+  const nextAppState = useRef<AppState | null>(null);
+
+  const transitionToState = (newState: AppState) => {
+    setIsExiting(true);
+    nextAppState.current = newState;
+  };
+
+  useEffect(() => {
+    if (isExiting) {
+      const timer = setTimeout(() => {
+        if (nextAppState.current !== null) {
+          setAppState(nextAppState.current);
+        }
+        setIsExiting(false);
+      }, 500); // Corresponds to the fade-out animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [isExiting]);
 
   const handleOrientation = (event: DeviceOrientationEvent) => {
-    // FIX: Cast event to `any` to access the non-standard `webkitCompassHeading` property for iOS Safari.
     const currentHeading = (event as any).webkitCompassHeading ?? event.alpha;
     if (currentHeading !== null) {
       setHeading(currentHeading);
@@ -25,36 +43,35 @@ const App: React.FC = () => {
   };
 
   const handlePermissionRequest = useCallback(async () => {
-    // For iOS 13+
     if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
       try {
         const permission = await (DeviceOrientationEvent as any).requestPermission();
         if (permission !== 'granted') {
           setError('Device orientation permission was denied. The compass cannot function.');
-          setAppState(AppState.ERROR);
+          transitionToState(AppState.ERROR);
           return;
         }
       } catch (err) {
         setError('Error requesting device orientation permission.');
-        setAppState(AppState.ERROR);
+        transitionToState(AppState.ERROR);
         return;
       }
     }
 
     window.addEventListener('deviceorientation', handleOrientation);
     
-    setAppState(AppState.LOADING_LOCATION);
+    transitionToState(AppState.LOADING_LOCATION);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
-        setAppState(AppState.READY);
+        transitionToState(AppState.READY);
       },
       (geoError) => {
         setError(`Geolocation error: ${geoError.message}. Please enable location services.`);
-        setAppState(AppState.ERROR);
+        transitionToState(AppState.ERROR);
       },
       { enableHighAccuracy: true }
     );
@@ -91,8 +108,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="bg-gray-900 text-cyan-300 w-screen h-screen overflow-hidden select-none">
-      {renderContent()}
+    <main className="text-cyan-300 w-screen h-screen overflow-hidden select-none flex items-center justify-center">
+      <div className={`w-full h-full ${isExiting ? 'animate-fade-out' : 'animate-fade-in'}`}>
+        {renderContent()}
+      </div>
     </main>
   );
 };
