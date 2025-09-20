@@ -1,21 +1,40 @@
-
 import React from 'react';
 import { DirectionCountries } from '../types';
 
 interface CompassDisplayProps {
   heading: number | null;
   countries: DirectionCountries | null;
+  onCountryChange: (direction: 'east' | 'west', value: string) => void;
 }
 
 const CountryLabel: React.FC<{ direction: string; country: string; positionClass: string }> = ({ direction, country, positionClass }) => (
-    <div className={`absolute ${positionClass} flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 w-32 h-20 text-center`}>
+    <div className={`absolute ${positionClass} flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 w-36 h-20 text-center`}>
         <div className="text-sm font-bold text-cyan-500 tracking-widest">{direction}</div>
         <div className="text-lg font-bold text-white truncate w-full" title={country}>{country}</div>
     </div>
 );
 
+const EditableCountryLabel: React.FC<{
+  direction: string;
+  country: string;
+  positionClass: string;
+  onChange: (value: string) => void;
+}> = ({ direction, country, positionClass, onChange }) => (
+    <div className={`absolute ${positionClass} flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 w-36 h-20 text-center`}>
+        <div className="text-sm font-bold text-cyan-500 tracking-widest">{direction}</div>
+        <input
+            type="text"
+            value={country}
+            onChange={(e) => onChange(e.target.value)}
+            className="text-lg font-bold text-white truncate w-full bg-gray-900/50 text-center rounded-md p-1 border border-transparent hover:border-cyan-500/50 focus:border-cyan-500 focus:outline-none transition-colors"
+            aria-label={`Country to the ${direction}`}
+            spellCheck="false"
+        />
+    </div>
+);
 
-const CompassDisplay: React.FC<CompassDisplayProps> = ({ heading, countries }) => {
+
+const CompassDisplay: React.FC<CompassDisplayProps> = ({ heading, countries, onCountryChange }) => {
   const rotation = heading !== null ? -heading : 0;
 
   return (
@@ -24,8 +43,8 @@ const CompassDisplay: React.FC<CompassDisplayProps> = ({ heading, countries }) =
             <>
                 <CountryLabel direction="NORTH" country={countries.north} positionClass="top-1/4 left-1/2" />
                 <CountryLabel direction="SOUTH" country={countries.south} positionClass="top-3/4 left-1/2" />
-                <CountryLabel direction="WEST" country={countries.west} positionClass="top-1/2 left-1/4" />
-                <CountryLabel direction="EAST" country={countries.east} positionClass="top-1/2 left-3/4" />
+                <EditableCountryLabel direction="WEST" country={countries.west} positionClass="top-1/2 left-1/4" onChange={value => onCountryChange('west', value)} />
+                <EditableCountryLabel direction="EAST" country={countries.east} positionClass="top-1/2 left-3/4" onChange={value => onCountryChange('east', value)} />
             </>
         )}
       

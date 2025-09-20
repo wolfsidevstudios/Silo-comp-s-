@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppState, Coordinates, DirectionCountries } from './types';
-import { getCountriesInDirections } from './services/geminiService';
 import PermissionScreen from './components/PermissionScreen';
 import LoadingIndicator from './components/LoadingIndicator';
 import CompassDisplay from './components/CompassDisplay';
@@ -9,7 +8,12 @@ const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.REQUESTING_PERMISSION);
   const [heading, setHeading] = useState<number | null>(null);
   const [location, setLocation] = useState<Coordinates | null>(null);
-  const [countries, setCountries] = useState<DirectionCountries | null>(null);
+  const [countries, setCountries] = useState<DirectionCountries>({
+    north: 'USA',
+    south: 'Mexico',
+    east: 'Atlantic',
+    west: 'Pacific',
+  });
   const [error, setError] = useState<string | null>(null);
 
   const handleOrientation = (event: DeviceOrientationEvent) => {
@@ -46,7 +50,7 @@ const App: React.FC = () => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
-        setAppState(AppState.LOADING_COUNTRIES);
+        setAppState(AppState.READY);
       },
       (geoError) => {
         setError(`Geolocation error: ${geoError.message}. Please enable location services.`);
@@ -55,25 +59,6 @@ const App: React.FC = () => {
       { enableHighAccuracy: true }
     );
   }, []);
-  
-  useEffect(() => {
-    const fetchCountries = async () => {
-      if (location) {
-        try {
-          const countryData = await getCountriesInDirections(location);
-          setCountries(countryData);
-          setAppState(AppState.READY);
-        } catch (err: any) {
-          setError(err.message || 'An unknown error occurred while fetching country data.');
-          setAppState(AppState.ERROR);
-        }
-      }
-    };
-
-    if (appState === AppState.LOADING_COUNTRIES) {
-      fetchCountries();
-    }
-  }, [location, appState]);
 
   useEffect(() => {
     return () => {
@@ -81,16 +66,18 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const handleCountryChange = (direction: 'east' | 'west', value: string) => {
+    setCountries(prev => ({ ...prev, [direction]: value }));
+  };
+
   const renderContent = () => {
     switch (appState) {
       case AppState.REQUESTING_PERMISSION:
         return <PermissionScreen onRequest={handlePermissionRequest} />;
       case AppState.LOADING_LOCATION:
         return <LoadingIndicator message="Acquiring satellite lock..." />;
-      case AppState.LOADING_COUNTRIES:
-        return <LoadingIndicator message="Consulting world atlas..." />;
       case AppState.READY:
-        return <CompassDisplay heading={heading} countries={countries} />;
+        return <CompassDisplay heading={heading} countries={countries} onCountryChange={handleCountryChange} />;
       case AppState.ERROR:
         return (
           <div className="flex flex-col items-center justify-center h-full text-center text-red-400">

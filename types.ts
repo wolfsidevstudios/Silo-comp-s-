@@ -1,8 +1,6 @@
-
 export enum AppState {
   REQUESTING_PERMISSION,
   LOADING_LOCATION,
-  LOADING_COUNTRIES,
   READY,
   ERROR,
 }
